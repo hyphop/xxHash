@@ -6,6 +6,7 @@
 libxxhash.*
 
 # Executables
+xxh128sum
 xxh32sum
 xxh64sum
 xxhsum
