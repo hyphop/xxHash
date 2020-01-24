@@ -935,20 +935,26 @@ static void BMK_sanityCheck(void)
 *  File Hashing
 **********************************************************/
 
+char copy = 0;
+
 static void BMK_display_LittleEndian(const void* ptr, size_t length)
 {
     const U8* p = (const U8*)ptr;
     size_t idx;
-    for (idx=length-1; idx<length; idx--)    /* intentional underflow to negative to detect end */
-        DISPLAYRESULT("%02x", p[idx]);
+    for (idx=length-1; idx<length; idx--) {    /* intentional underflow to negative to detect end */
+	copy ?	DISPLAY("%02x", p[idx]):
+		DISPLAYRESULT("%02x", p[idx]);
+    }
 }
 
 static void BMK_display_BigEndian(const void* ptr, size_t length)
 {
     const U8* p = (const U8*)ptr;
     size_t idx;
-    for (idx=0; idx<length; idx++)
-        DISPLAYRESULT("%02x", p[idx]);
+    for (idx=0; idx<length; idx++) {
+	copy ?	DISPLAY("%02x", p[idx]):
+		DISPLAYRESULT("%02x", p[idx]);
+    }
 }
 
 typedef union {
@@ -956,6 +962,8 @@ typedef union {
     XXH64_hash_t   xxh64;
     XXH128_hash_t xxh128;
 } Multihash;
+
+
 
 /* BMK_hashStream :
  * read data from inFile,
@@ -993,6 +1001,9 @@ BMK_hashStream(FILE* inFile,
             default:
                 assert(0);
             }
+	    if ( copy ) {
+		fwrite(buffer, 1, readSize, stdout);
+	    }
     }   }
 
     {   Multihash finalHash;
@@ -1056,14 +1067,15 @@ static int BMK_hash(const char* fileName,
             && (fileNameEnd[-1-infoFilenameSize] != '/')
             && (fileNameEnd[-1-infoFilenameSize] != '\\') )
               infoFilenameSize++;
-        DISPLAYLEVEL(2, "\rLoading %s...  \r", fileNameEnd - infoFilenameSize);
+
+//        DISPLAYLEVEL(2, "\rLoading %s...  \r", fileNameEnd - infoFilenameSize);
 
         /* Load file & update hash */
         hashValue = BMK_hashStream(inFile, hashType, buffer, blockSize);
 
         fclose(inFile);
         free(buffer);
-        DISPLAYLEVEL(2, "%*s             \r", infoFilenameSize, "");  /* erase line */
+//        DISPLAYLEVEL(2, "%*s             \r", infoFilenameSize, "");  /* erase line */
     }
 
     /* display Hash value followed by file name */
@@ -1093,6 +1105,9 @@ static int BMK_hash(const char* fileName,
     default:
         assert(0);
     }
+
+    copy ? 
+    DISPLAY("\n") :
     DISPLAYRESULT("  %s\n", fileName);
 
     return 0;
@@ -1756,6 +1771,10 @@ int main(int argc, const char** argv)
             /* Display help on usage */
             case 'h':
                 return usage_advanced(exename);
+
+            /* copy mode */
+            case 'C':
+		copy=1;
 
             /* select hash algorithm */
             case 'H':
